@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("FrescuraApi")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+42fff727fe4ed68279c214f46e9ca8ba290c77e9")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+00bedc3335976b00739cad6aa8cd42aa0619b702")]
 [assembly: System.Reflection.AssemblyProductAttribute("FrescuraApi")]
 [assembly: System.Reflection.AssemblyTitleAttribute("FrescuraApi")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

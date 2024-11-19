@@ -7,11 +7,11 @@ namespace FrescuraApi.Models
         public int ProductoID { get; set; }
         public int Codigo { get; set; }
         [StringLength(80)]
-        public string NomgbreProducto { get; set; }
+        public required string NomgbreProducto { get; set; }
         [StringLength(100)]
         public int Precio { get; set; }
         [StringLength(30)]
-        public string Peso { get; set; }
+        public required string Peso { get; set; }
       
     }
 }

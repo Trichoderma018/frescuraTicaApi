@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using System.Diagnostics.CodeAnalysis;
 namespace FrescuraApi.Models
 {
     public class Proveedores
@@ -7,12 +6,14 @@ namespace FrescuraApi.Models
         [Key]
         public int ProveedoresID { get; set; }
         [StringLength(200)]
-        public string NombreComercial { get; set; }
+        public required string NombreComercial { get; set; }
         [StringLength(100)]
-        public string Contacto { get; set; }
-        [StringLength(100)]
-        public string Direccion { get; set; }
-        public int TelefonoID { get; set; }
+        [Required]
+        public required string Contacto { get; set; }
+        [StringLength(200)]
+        [Required]
+        public required string Direccion { get; set; }
+        public int TelefonoID { get; set; } // La relacion con el modelo telefono es para agragar varios telefonos a un proveedor
       
     }
 }

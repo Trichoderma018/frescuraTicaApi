@@ -1,20 +1,22 @@
 using System.ComponentModel.DataAnnotations;
+using System.Diagnostics.CodeAnalysis;
 namespace FrescuraApi.Models
 {
     public class Usuarios
     {
         [Key]
+        [NotNull]
         public int UsuariosID { get; set; }
         [StringLength(80)]
-        public string Tipo { get; set; }
+        public required string Tipo { get; set; }
         [StringLength(100)]
-        public string NombreUsuario { get; set; }
+        public required string NombreUsuario { get; set; }
         [StringLength(100)]
-        public string Apellido { get; set; }
+        public string? Apellido { get; set; }
         [StringLength(100)]
-        public string Correo { get; set; }
+        public required string Correo { get; set; }
         [StringLength(10)]
-        public string Contraseña { get; set; }
-        public int TelefonoID { get; set; }
+        public required string Contraseña { get; set; }
+        public int TelefonoID { get; set; } // La relacion con el modelo telefono es para agragar varios telefonos a un usuario
     }
 }
