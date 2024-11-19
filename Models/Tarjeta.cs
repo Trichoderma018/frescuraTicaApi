@@ -10,7 +10,7 @@ namespace FrescuraApi.Models
         public required int NumeroTarjeta { get; set; } 
         public required DateOnly Expiracion { get; set; }
         public required int Cvv { get; set; } 
-        public bool Pago { get; set; } // Es aqui donde se guarda si el pago fue exitoso o no y luego se envia a los modelos Pago y Pedido
+        public bool Pago { get; set; } // Es aqui donde se genera la validacion de pago fue exitoso o no y luego se envia a los modelos Pago y Pedido
         public int UsuarioID { get; set; }
     }
 }
