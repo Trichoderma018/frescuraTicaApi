@@ -2,27 +2,41 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using FrescuraApi.Models;
 
-
 namespace FrescuraApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class UsuariosController(FreshContext context) : ControllerBase
+    public class UsuariosController : ControllerBase
     {
-        private readonly FreshContext _context = context;
+        private readonly FreshContext _context;
+
+        public UsuariosController(FreshContext context)
+        {
+            _context = context;
+        }
 
         // GET: api/Usuarios
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Usuarios>>> GetUsuarios()
         {
-            return await _context.Usuarios.ToListAsync();
+            return await _context.Set<Usuarios>()
+                .Include(u => u.Telefonos)
+                .Include(u => u.Pedidos)
+                .Include(u => u.Pagos)
+                .Include(u => u.Tarjetas)
+                .ToListAsync();
         }
 
-        // GET: api/Usuarios/5
+        // GET: api/Usuarios/{id}
         [HttpGet("{id}")]
         public async Task<ActionResult<Usuarios>> GetUsuario(int id)
         {
-            var usuario = await _context.Usuarios.FindAsync(id);
+            var usuario = await _context.Set<Usuarios>()
+                .Include(u => u.Telefonos)
+                .Include(u => u.Pedidos)
+                .Include(u => u.Pagos)
+                .Include(u => u.Tarjetas)
+                .FirstOrDefaultAsync(u => u.UsuarioID == id);
 
             if (usuario == null)
             {
@@ -36,19 +50,19 @@ namespace FrescuraApi.Controllers
         [HttpPost]
         public async Task<ActionResult<Usuarios>> PostUsuario(Usuarios usuario)
         {
-            _context.Usuarios.Add(usuario);
+            _context.Set<Usuarios>().Add(usuario);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetUsuario", new { id = usuario.UsuariosID }, usuario);
+            return CreatedAtAction(nameof(GetUsuario), new { id = usuario.UsuarioID }, usuario);
         }
 
-        // PUT: api/Usuarios/5
+        // PUT: api/Usuarios/{id}
         [HttpPut("{id}")]
         public async Task<IActionResult> PutUsuario(int id, Usuarios usuario)
         {
-            if (id != usuario.UsuariosID)
+            if (id != usuario.UsuarioID)
             {
-                return BadRequest();
+                return BadRequest("El ID del usuario no coincide.");
             }
 
             _context.Entry(usuario).State = EntityState.Modified;
@@ -72,17 +86,17 @@ namespace FrescuraApi.Controllers
             return NoContent();
         }
 
-        // DELETE: api/Usuarios/5
+        // DELETE: api/Usuarios/{id}
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUsuario(int id)
         {
-            var usuario = await _context.Usuarios.FindAsync(id);
+            var usuario = await _context.Set<Usuarios>().FindAsync(id);
             if (usuario == null)
             {
                 return NotFound();
             }
 
-            _context.Usuarios.Remove(usuario);
+            _context.Set<Usuarios>().Remove(usuario);
             await _context.SaveChangesAsync();
 
             return NoContent();
@@ -90,7 +104,7 @@ namespace FrescuraApi.Controllers
 
         private bool UsuarioExists(int id)
         {
-            return _context.Usuarios.Any(e => e.UsuariosID == id);
+            return _context.Set<Usuarios>().Any(e => e.UsuarioID == id);
         }
     }
 }

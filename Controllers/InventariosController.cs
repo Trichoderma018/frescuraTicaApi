@@ -1,28 +1,38 @@
-using FrescuraApi.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using FrescuraApi.Models;
 
 namespace FrescuraApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class InventarioController(FreshContext context) : ControllerBase
+    public class InventariosController : ControllerBase
     {
-        private readonly FreshContext _context = context;
+        private readonly FreshContext _context;
 
+        public InventariosController(FreshContext context)
+        {
+            _context = context;
+        }
 
-        // GET: api/Inventario
+        // GET: api/Inventarios
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Inventario>>> GetInventarios()
         {
-            return await _context.Inventario.ToListAsync();
+            return await _context.Set<Inventario>()
+                                 .Include(i => i.Producto)
+                                 .Include(i => i.Pedido)
+                                 .ToListAsync();
         }
 
-        // GET: api/Inventario/5
+        // GET: api/Inventarios/{id}
         [HttpGet("{id}")]
         public async Task<ActionResult<Inventario>> GetInventario(int id)
         {
-            var inventario = await _context.Inventario.FindAsync(id);
+            var inventario = await _context.Set<Inventario>()
+                                           .Include(i => i.Producto)
+                                           .Include(i => i.Pedido)
+                                           .FirstOrDefaultAsync(i => i.InventarioID == id);
 
             if (inventario == null)
             {
@@ -32,34 +42,43 @@ namespace FrescuraApi.Controllers
             return inventario;
         }
 
-        // POST: api/Inventario
+        // POST: api/Inventarios
         [HttpPost]
         public async Task<ActionResult<Inventario>> PostInventario(Inventario inventario)
         {
-            // Validaciones de las relaciones
-            if (!await _context.Producto.AnyAsync(p => p.ProductoID == inventario.ProductoID))
+            try
             {
-                return BadRequest("El ProductoID especificado no existe.");
-            }
+                // Validaciones
+                var producto = await _context.Set<Producto>().FindAsync(inventario.ProductoID);
+                if (producto == null)
+                {
+                    return BadRequest("El producto especificado no existe.");
+                }
 
-            if (!await _context.Pedido.AnyAsync(p => p.PedidoID == inventario.PedidoID))
+                var pedido = await _context.Set<Pedido>().FindAsync(inventario.PedidoID);
+                if (pedido == null)
+                {
+                    return BadRequest("El pedido especificado no existe.");
+                }
+
+                // Cálculos automáticos
+                inventario.TotalCompra = pedido.Cantidad * inventario.PrecioCompra;
+                inventario.TotalVenta = pedido.Cantidad * inventario.PrecioVenta;
+                inventario.Utilidad = inventario.TotalVenta - inventario.TotalCompra;
+                inventario.FechaYHora = DateTime.UtcNow;
+
+                _context.Set<Inventario>().Add(inventario);
+                await _context.SaveChangesAsync();
+
+                return CreatedAtAction(nameof(GetInventario), new { id = inventario.InventarioID }, inventario);
+            }
+            catch (Exception ex)
             {
-                return BadRequest("El PedidoID especificado no existe.");
+                return StatusCode(500, $"Error interno del servidor: {ex.Message}");
             }
-
-            // Calcular los campos derivados
-            inventario.TotalCompra = inventario.PrecioCompra * inventario.SaveStock;
-            inventario.TotalVenta = inventario.PrecioVenta * inventario.SaveStock;
-            inventario.Utilidad = inventario.TotalVenta - inventario.TotalCompra;
-            inventario.FechaYHora = DateTime.UtcNow;
-
-            _context.Inventario.Add(inventario);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction("GetInventario", new { id = inventario.InventarioID }, inventario);
         }
 
-        // PUT: api/Inventario/5
+        // PUT: api/Inventarios/{id}
         [HttpPut("{id}")]
         public async Task<IActionResult> PutInventario(int id, Inventario inventario)
         {
@@ -68,27 +87,26 @@ namespace FrescuraApi.Controllers
                 return BadRequest("El ID del inventario no coincide.");
             }
 
-            // Validaciones de las relaciones
-            if (!await _context.Producto.AnyAsync(p => p.ProductoID == inventario.ProductoID))
-            {
-                return BadRequest("El ProductoID especificado no existe.");
-            }
-
-            if (!await _context.Pedido.AnyAsync(p => p.PedidoID == inventario.PedidoID))
-            {
-                return BadRequest("El PedidoID especificado no existe.");
-            }
-
-            // Calcular los campos derivados
-            inventario.TotalCompra = inventario.PrecioCompra * inventario.SaveStock;
-            inventario.TotalVenta = inventario.PrecioVenta * inventario.SaveStock;
-            inventario.Utilidad = inventario.TotalVenta - inventario.TotalCompra;
-            inventario.FechaYHora = DateTime.UtcNow;
-
-            _context.Entry(inventario).State = EntityState.Modified;
-
             try
             {
+                var producto = await _context.Set<Producto>().FindAsync(inventario.ProductoID);
+                if (producto == null)
+                {
+                    return BadRequest("El producto especificado no existe.");
+                }
+
+                var pedido = await _context.Set<Pedido>().FindAsync(inventario.PedidoID);
+                if (pedido == null)
+                {
+                    return BadRequest("El pedido especificado no existe.");
+                }
+
+                // Cálculos automáticos
+                inventario.TotalCompra = pedido.Cantidad * inventario.PrecioCompra;
+                inventario.TotalVenta = pedido.Cantidad * inventario.PrecioVenta;
+                inventario.Utilidad = inventario.TotalVenta - inventario.TotalCompra;
+
+                _context.Entry(inventario).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
             }
             catch (DbUpdateConcurrencyException)
@@ -102,29 +120,40 @@ namespace FrescuraApi.Controllers
                     throw;
                 }
             }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error interno del servidor: {ex.Message}");
+            }
 
             return NoContent();
         }
 
-        // DELETE: api/Inventario/5
+        // DELETE: api/Inventarios/{id}
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteInventario(int id)
         {
-            var inventario = await _context.Inventario.FindAsync(id);
-            if (inventario == null)
+            try
             {
-                return NotFound();
+                var inventario = await _context.Set<Inventario>().FindAsync(id);
+                if (inventario == null)
+                {
+                    return NotFound();
+                }
+
+                _context.Set<Inventario>().Remove(inventario);
+                await _context.SaveChangesAsync();
+
+                return NoContent();
             }
-
-            _context.Inventario.Remove(inventario);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error interno del servidor: {ex.Message}");
+            }
         }
 
         private bool InventarioExists(int id)
         {
-            return _context.Inventario.Any(e => e.InventarioID == id);
+            return _context.Set<Inventario>().Any(e => e.InventarioID == id);
         }
     }
 }

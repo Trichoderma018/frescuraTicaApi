@@ -1,27 +1,38 @@
-using FrescuraApi.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using FrescuraApi.Models;
 
 namespace FrescuraApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class TarjetaController(FreshContext context) : ControllerBase
+    public class TarjetasController : ControllerBase
     {
-        private readonly FreshContext _context = context;
+        private readonly FreshContext _context;
 
-        // GET: api/Tarjeta
+        public TarjetasController(FreshContext context)
+        {
+            _context = context;
+        }
+
+        // GET: api/Tarjetas
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Tarjeta>>> GetTarjetas()
         {
-            return await _context.Tarjeta.ToListAsync();
+            return await _context.Set<Tarjeta>()
+                                 .Include(t => t.Usuarios)
+                                 .Include(t => t.Pagos)
+                                 .ToListAsync();
         }
 
-        // GET: api/Tarjeta/5
+        // GET: api/Tarjetas/{id}
         [HttpGet("{id}")]
         public async Task<ActionResult<Tarjeta>> GetTarjeta(int id)
         {
-            var tarjeta = await _context.Tarjeta.FindAsync(id);
+            var tarjeta = await _context.Set<Tarjeta>()
+                                        .Include(t => t.Usuarios)
+                                        .Include(t => t.Pagos)
+                                        .FirstOrDefaultAsync(t => t.TarjetaID == id);
 
             if (tarjeta == null)
             {
@@ -31,69 +42,30 @@ namespace FrescuraApi.Controllers
             return tarjeta;
         }
 
-        // POST: api/Tarjeta
+        // POST: api/Tarjetas
         [HttpPost]
         public async Task<ActionResult<Tarjeta>> PostTarjeta(Tarjeta tarjeta)
         {
-            // Validar que el UsuarioID exista
-            if (!await _context.Usuarios.AnyAsync(u => u.UsuariosID == tarjeta.UsuarioID))
+            try
             {
-                return BadRequest("El UsuarioID especificado no existe.");
-            }
+                _context.Set<Tarjeta>().Add(tarjeta);
+                await _context.SaveChangesAsync();
 
-            // Validar longitud de Número de Tarjeta y CVV
-            if (tarjeta.NumeroTarjeta.ToString().Length != 16)
+                return CreatedAtAction(nameof(GetTarjeta), new { id = tarjeta.TarjetaID }, tarjeta);
+            }
+            catch (Exception ex)
             {
-                return BadRequest("El Número de Tarjeta debe tener 16 dígitos.");
+                return StatusCode(500, $"Error interno del servidor: {ex.Message}");
             }
-
-            if (tarjeta.Cvv.ToString().Length != 3)
-            {
-                return BadRequest("El CVV debe tener 3 dígitos.");
-            }
-
-            // Validar que la fecha de expiración no sea pasada
-            if (tarjeta.Expiracion < DateOnly.FromDateTime(DateTime.UtcNow))
-            {
-                return BadRequest("La fecha de expiración no puede ser pasada.");
-            }
-
-            _context.Tarjeta.Add(tarjeta);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction("GetTarjeta", new { id = tarjeta.TarjetaID }, tarjeta);
         }
 
-        // PUT: api/Tarjeta/5
+        // PUT: api/Tarjetas/{id}
         [HttpPut("{id}")]
         public async Task<IActionResult> PutTarjeta(int id, Tarjeta tarjeta)
         {
             if (id != tarjeta.TarjetaID)
             {
                 return BadRequest("El ID de la tarjeta no coincide.");
-            }
-
-            // Validar que el UsuarioID exista
-            if (!await _context.Usuarios.AnyAsync(u => u.UsuariosID == tarjeta.UsuarioID))
-            {
-                return BadRequest("El UsuarioID especificado no existe.");
-            }
-
-            // Validar longitud de Número de Tarjeta y CVV
-            if (tarjeta.NumeroTarjeta.ToString().Length != 16)
-            {
-                return BadRequest("El Número de Tarjeta debe tener 16 dígitos.");
-            }
-
-            if (tarjeta.Cvv.ToString().Length != 3)
-            {
-                return BadRequest("El CVV debe tener 3 dígitos.");
-            }
-
-            // Validar que la fecha de expiración no sea pasada
-            if (tarjeta.Expiracion < DateOnly.FromDateTime(DateTime.UtcNow))
-            {
-                return BadRequest("La fecha de expiración no puede ser pasada.");
             }
 
             _context.Entry(tarjeta).State = EntityState.Modified;
@@ -113,29 +85,40 @@ namespace FrescuraApi.Controllers
                     throw;
                 }
             }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error interno del servidor: {ex.Message}");
+            }
 
             return NoContent();
         }
 
-        // DELETE: api/Tarjeta/5
+        // DELETE: api/Tarjetas/{id}
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteTarjeta(int id)
         {
-            var tarjeta = await _context.Tarjeta.FindAsync(id);
-            if (tarjeta == null)
+            try
             {
-                return NotFound();
+                var tarjeta = await _context.Set<Tarjeta>().FindAsync(id);
+                if (tarjeta == null)
+                {
+                    return NotFound();
+                }
+
+                _context.Set<Tarjeta>().Remove(tarjeta);
+                await _context.SaveChangesAsync();
+
+                return NoContent();
             }
-
-            _context.Tarjeta.Remove(tarjeta);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error interno del servidor: {ex.Message}");
+            }
         }
 
         private bool TarjetaExists(int id)
         {
-            return _context.Tarjeta.Any(e => e.TarjetaID == id);
+            return _context.Set<Tarjeta>().Any(e => e.TarjetaID == id);
         }
     }
 }

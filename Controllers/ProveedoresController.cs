@@ -1,27 +1,38 @@
-using FrescuraApi.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using FrescuraApi.Models;
 
 namespace FrescuraApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class ProveedoresController(FreshContext context) : ControllerBase
+    public class ProveedoresController : ControllerBase
     {
-        private readonly FreshContext _context = context;
+        private readonly FreshContext _context;
+
+        public ProveedoresController(FreshContext context)
+        {
+            _context = context;
+        }
 
         // GET: api/Proveedores
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Proveedores>>> GetProveedores()
         {
-            return await _context.Proveedores.ToListAsync();
+            return await _context.Set<Proveedores>()
+                                 .Include(p => p.Telefonos)
+                                 .Include(p => p.Pedidos)
+                                 .ToListAsync();
         }
 
-        // GET: api/Proveedores/5
+        // GET: api/Proveedores/{id}
         [HttpGet("{id}")]
         public async Task<ActionResult<Proveedores>> GetProveedor(int id)
         {
-            var proveedor = await _context.Proveedores.FindAsync(id);
+            var proveedor = await _context.Set<Proveedores>()
+                                          .Include(p => p.Telefonos)
+                                          .Include(p => p.Pedidos)
+                                          .FirstOrDefaultAsync(p => p.ProveedoreID == id);
 
             if (proveedor == null)
             {
@@ -35,43 +46,19 @@ namespace FrescuraApi.Controllers
         [HttpPost]
         public async Task<ActionResult<Proveedores>> PostProveedor(Proveedores proveedor)
         {
-            // Validar que el NombreComercial no sea duplicado
-            if (await _context.Proveedores.AnyAsync(p => p.NombreComercial == proveedor.NombreComercial))
-            {
-                return BadRequest("El Nombre Comercial ya existe.");
-            }
-
-            // Validar que TelefonoID exista si es proporcionado
-            if (proveedor.TelefonoID != 0 && !await _context.Telefono.AnyAsync(t => t.TelefonoID == proveedor.TelefonoID))
-            {
-                return BadRequest("El TelefonoID especificado no existe.");
-            }
-
-            _context.Proveedores.Add(proveedor);
+            _context.Set<Proveedores>().Add(proveedor);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetProveedor", new { id = proveedor.ProveedoresID }, proveedor);
+            return CreatedAtAction(nameof(GetProveedor), new { id = proveedor.ProveedoreID }, proveedor);
         }
 
-        // PUT: api/Proveedores/5
+        // PUT: api/Proveedores/{id}
         [HttpPut("{id}")]
         public async Task<IActionResult> PutProveedor(int id, Proveedores proveedor)
         {
-            if (id != proveedor.ProveedoresID)
+            if (id != proveedor.ProveedoreID)
             {
                 return BadRequest("El ID del proveedor no coincide.");
-            }
-
-            // Validar que el NombreComercial no sea duplicado por otro proveedor
-            if (await _context.Proveedores.AnyAsync(p => p.NombreComercial == proveedor.NombreComercial && p.ProveedoresID != id))
-            {
-                return BadRequest("El Nombre Comercial ya está en uso por otro proveedor.");
-            }
-
-            // Validar que TelefonoID exista si es proporcionado
-            if (proveedor.TelefonoID != 0 && !await _context.Telefono.AnyAsync(t => t.TelefonoID == proveedor.TelefonoID))
-            {
-                return BadRequest("El TelefonoID especificado no existe.");
             }
 
             _context.Entry(proveedor).State = EntityState.Modified;
@@ -95,17 +82,17 @@ namespace FrescuraApi.Controllers
             return NoContent();
         }
 
-        // DELETE: api/Proveedores/5
+        // DELETE: api/Proveedores/{id}
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteProveedor(int id)
         {
-            var proveedor = await _context.Proveedores.FindAsync(id);
+            var proveedor = await _context.Set<Proveedores>().FindAsync(id);
             if (proveedor == null)
             {
                 return NotFound();
             }
 
-            _context.Proveedores.Remove(proveedor);
+            _context.Set<Proveedores>().Remove(proveedor);
             await _context.SaveChangesAsync();
 
             return NoContent();
@@ -113,7 +100,7 @@ namespace FrescuraApi.Controllers
 
         private bool ProveedorExists(int id)
         {
-            return _context.Proveedores.Any(e => e.ProveedoresID == id);
+            return _context.Set<Proveedores>().Any(e => e.ProveedoreID == id);
         }
     }
 }

@@ -1,27 +1,44 @@
-using FrescuraApi.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using FrescuraApi.Models;
 
 namespace FrescuraApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class PedidoController(FreshContext context) : ControllerBase
+    public class PedidosController : ControllerBase
     {
-        private readonly FreshContext _context = context;
+        private readonly FreshContext _context;
 
-        // GET: api/Pedido
+        public PedidosController(FreshContext context)
+        {
+            _context = context;
+        }
+
+        // GET: api/Pedidos
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Pedido>>> GetPedidos()
         {
-            return await _context.Pedido.ToListAsync();
+            return await _context.Set<Pedido>()
+                                 .Include(p => p.Producto)
+                                 .Include(p => p.Usuario)
+                                 .Include(p => p.Proveedor)
+                                 .Include(p => p.Inventarios)
+                                 .Include(p => p.Pagos)
+                                 .ToListAsync();
         }
 
-        // GET: api/Pedido/5
+        // GET: api/Pedidos/{id}
         [HttpGet("{id}")]
         public async Task<ActionResult<Pedido>> GetPedido(int id)
         {
-            var pedido = await _context.Pedido.FindAsync(id);
+            var pedido = await _context.Set<Pedido>()
+                                       .Include(p => p.Producto)
+                                       .Include(p => p.Usuario)
+                                       .Include(p => p.Proveedor)
+                                       .Include(p => p.Inventarios)
+                                       .Include(p => p.Pagos)
+                                       .FirstOrDefaultAsync(p => p.PedidoID == id);
 
             if (pedido == null)
             {
@@ -31,33 +48,32 @@ namespace FrescuraApi.Controllers
             return pedido;
         }
 
-        // POST: api/Pedido
+        // POST: api/Pedidos
         [HttpPost]
         public async Task<ActionResult<Pedido>> PostPedido(Pedido pedido)
         {
-            // Validación básica de las relaciones
-            if (!await _context.Producto.AnyAsync(p => p.ProductoID == pedido.ProductoID))
+            try
             {
-                return BadRequest("El ProductoID especificado no existe.");
-            }
+                // Validación: PrecioTotal = Cantidad * Producto.Precio
+                var producto = await _context.Set<Producto>().FindAsync(pedido.ProductoID);
+                if (producto == null)
+                {
+                    return BadRequest("El producto especificado no existe.");
+                }
+                pedido.PrecioTotal = (int)(pedido.Cantidad * producto.Precio);
 
-            if (!await _context.Proveedores.AnyAsync(p => p.ProveedoresID == pedido.ProveedoresID))
+                _context.Set<Pedido>().Add(pedido);
+                await _context.SaveChangesAsync();
+
+                return CreatedAtAction(nameof(GetPedido), new { id = pedido.PedidoID }, pedido);
+            }
+            catch (Exception ex)
             {
-                return BadRequest("El ProveedoresID especificado no existe.");
+                return StatusCode(500, $"Error interno del servidor: {ex.Message}");
             }
-
-            if (!await _context.Usuarios.AnyAsync(u => u.UsuariosID == pedido.UsuarioID))
-            {
-                return BadRequest("El UsuarioID especificado no existe.");
-            }
-
-            _context.Pedido.Add(pedido);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction("GetPedido", new { id = pedido.PedidoID }, pedido);
         }
 
-        // PUT: api/Pedido/5
+        // PUT: api/Pedidos/{id}
         [HttpPut("{id}")]
         public async Task<IActionResult> PutPedido(int id, Pedido pedido)
         {
@@ -66,26 +82,16 @@ namespace FrescuraApi.Controllers
                 return BadRequest("El ID del pedido no coincide.");
             }
 
-            // Validación básica de las relaciones
-            if (!await _context.Producto.AnyAsync(p => p.ProductoID == pedido.ProductoID))
-            {
-                return BadRequest("El ProductoID especificado no existe.");
-            }
-
-            if (!await _context.Proveedores.AnyAsync(p => p.ProveedoresID == pedido.ProveedoresID))
-            {
-                return BadRequest("El ProveedoresID especificado no existe.");
-            }
-
-            if (!await _context.Usuarios.AnyAsync(u => u.UsuariosID == pedido.UsuarioID))
-            {
-                return BadRequest("El UsuarioID especificado no existe.");
-            }
-
-            _context.Entry(pedido).State = EntityState.Modified;
-
             try
             {
+                var producto = await _context.Set<Producto>().FindAsync(pedido.ProductoID);
+                if (producto == null)
+                {
+                    return BadRequest("El producto especificado no existe.");
+                }
+                pedido.PrecioTotal = (int)(pedido.Cantidad * producto.Precio);
+
+                _context.Entry(pedido).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
             }
             catch (DbUpdateConcurrencyException)
@@ -99,29 +105,40 @@ namespace FrescuraApi.Controllers
                     throw;
                 }
             }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error interno del servidor: {ex.Message}");
+            }
 
             return NoContent();
         }
 
-        // DELETE: api/Pedido/5
+        // DELETE: api/Pedidos/{id}
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeletePedido(int id)
         {
-            var pedido = await _context.Pedido.FindAsync(id);
-            if (pedido == null)
+            try
             {
-                return NotFound();
+                var pedido = await _context.Set<Pedido>().FindAsync(id);
+                if (pedido == null)
+                {
+                    return NotFound();
+                }
+
+                _context.Set<Pedido>().Remove(pedido);
+                await _context.SaveChangesAsync();
+
+                return NoContent();
             }
-
-            _context.Pedido.Remove(pedido);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error interno del servidor: {ex.Message}");
+            }
         }
 
         private bool PedidoExists(int id)
         {
-            return _context.Pedido.Any(e => e.PedidoID == id);
+            return _context.Set<Pedido>().Any(e => e.PedidoID == id);
         }
     }
 }

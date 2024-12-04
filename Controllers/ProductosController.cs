@@ -1,27 +1,38 @@
-using FrescuraApi.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using FrescuraApi.Models;
 
 namespace FrescuraApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class ProductoController(FreshContext context) : ControllerBase
+    public class ProductosController : ControllerBase
     {
-        private readonly FreshContext _context = context;
+        private readonly FreshContext _context;
 
-        // GET: api/Producto
+        public ProductosController(FreshContext context)
+        {
+            _context = context;
+        }
+
+        // GET: api/Productos
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Producto>>> GetProductos()
         {
-            return await _context.Producto.ToListAsync();
+            return await _context.Set<Producto>()
+                                 .Include(p => p.Pedidos)
+                                 .Include(p => p.Inventarios)
+                                 .ToListAsync();
         }
 
-        // GET: api/Producto/5
+        // GET: api/Productos/{id}
         [HttpGet("{id}")]
         public async Task<ActionResult<Producto>> GetProducto(int id)
         {
-            var producto = await _context.Producto.FindAsync(id);
+            var producto = await _context.Set<Producto>()
+                                         .Include(p => p.Pedidos)
+                                         .Include(p => p.Inventarios)
+                                         .FirstOrDefaultAsync(p => p.ProductoID == id);
 
             if (producto == null)
             {
@@ -31,41 +42,30 @@ namespace FrescuraApi.Controllers
             return producto;
         }
 
-        // POST: api/Producto
+        // POST: api/Productos
         [HttpPost]
         public async Task<ActionResult<Producto>> PostProducto(Producto producto)
         {
-            // Validar que el código del producto sea único
-            if (await _context.Producto.AnyAsync(p => p.Codigo == producto.Codigo))
+            try
             {
-                return BadRequest("El código del producto ya existe.");
-            }
+                _context.Set<Producto>().Add(producto);
+                await _context.SaveChangesAsync();
 
-            // Validar precio no negativo
-            if (producto.Precio < 0)
+                return CreatedAtAction(nameof(GetProducto), new { id = producto.ProductoID }, producto);
+            }
+            catch (Exception ex)
             {
-                return BadRequest("El precio del producto no puede ser negativo.");
+                return StatusCode(500, $"Error interno del servidor: {ex.Message}");
             }
-
-            _context.Producto.Add(producto);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction("GetProducto", new { id = producto.ProductoID }, producto);
         }
 
-        // PUT: api/Producto/5
+        // PUT: api/Productos/{id}
         [HttpPut("{id}")]
         public async Task<IActionResult> PutProducto(int id, Producto producto)
         {
             if (id != producto.ProductoID)
             {
                 return BadRequest("El ID del producto no coincide.");
-            }
-
-            // Validar precio no negativo
-            if (producto.Precio < 0)
-            {
-                return BadRequest("El precio del producto no puede ser negativo.");
             }
 
             _context.Entry(producto).State = EntityState.Modified;
@@ -85,29 +85,40 @@ namespace FrescuraApi.Controllers
                     throw;
                 }
             }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error interno del servidor: {ex.Message}");
+            }
 
             return NoContent();
         }
 
-        // DELETE: api/Producto/5
+        // DELETE: api/Productos/{id}
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteProducto(int id)
         {
-            var producto = await _context.Producto.FindAsync(id);
-            if (producto == null)
+            try
             {
-                return NotFound();
+                var producto = await _context.Set<Producto>().FindAsync(id);
+                if (producto == null)
+                {
+                    return NotFound();
+                }
+
+                _context.Set<Producto>().Remove(producto);
+                await _context.SaveChangesAsync();
+
+                return NoContent();
             }
-
-            _context.Producto.Remove(producto);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error interno del servidor: {ex.Message}");
+            }
         }
 
         private bool ProductoExists(int id)
         {
-            return _context.Producto.Any(e => e.ProductoID == id);
+            return _context.Set<Producto>().Any(e => e.ProductoID == id);
         }
     }
 }

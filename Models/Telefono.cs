@@ -17,8 +17,11 @@ namespace FrescuraApi.Models
         public string? Telefono5 { get; set; }
         [StringLength(20)]
         public string? Telefono6 { get; set; }
-        public int UsuariosID { get; set; }
-        public int ProveedoresID { get; set; }
-        // Este modelo es para agregar varios telefonos a un usuario o proveedor
+        public bool IsCompleted { get; set; }
+        // Claves foráneas
+         public int? UsuarioID { get; set; } 
+         public Usuarios? Usuario { get; set; } 
+         public int? ProveedorID { get; set; } 
+         public Proveedores? Proveedor { get; set; }
     }
 }

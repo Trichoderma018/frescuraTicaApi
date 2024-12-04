@@ -4,7 +4,7 @@ namespace FrescuraApi.Models
     public class Proveedores
     {
         [Key]
-        public int ProveedoresID { get; set; }
+        public int ProveedoreID { get; set; }
         [StringLength(200)]
         public required string NombreComercial { get; set; }
         [StringLength(100)]
@@ -13,7 +13,9 @@ namespace FrescuraApi.Models
         [StringLength(200)]
         [Required]
         public required string Direccion { get; set; }
-        public int TelefonoID { get; set; } // La relacion con el modelo telefono es para agragar varios telefonos a un proveedor
-      
+        public bool IsCompleted { get; set; }
+        // Relaciones
+        public ICollection<Telefono> Telefonos { get; set; } = new List<Telefono>();
+        public ICollection<Pedido>? Pedidos { get; set; }
     }
 }
