@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("FrescuraApi")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+52188027fad74348b1bbbce3451b1d418b8c600e")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8a59872ebd4b1f7ac8109ef0054417a548e3dcc4")]
 [assembly: System.Reflection.AssemblyProductAttribute("FrescuraApi")]
 [assembly: System.Reflection.AssemblyTitleAttribute("FrescuraApi")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
