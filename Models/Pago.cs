@@ -15,7 +15,7 @@ namespace FrescuraApi.Models
         public int PedidoID { get; set; } // Esta es la relacion con el Pedido
         public int UsuarioID { get; set; } // Esta es la relacion con el Usuario que esta comprando
 
-            // Relaciones
+        // Relaciones
         public Tarjeta? Tarjeta { get; set; }
         public Pedido? Pedido { get; set; }
         public Usuarios? Usuarios { get; set; }
